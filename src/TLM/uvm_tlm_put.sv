@@ -1,6 +1,15 @@
 `include "uvm_macros.svh"
 import uvm_pkg::*;
 
+// uvm_blocking_put_port #(parameter)
+// uvm_blocking_put_export #(parameter)
+// uvm_blocking_put_imp #(parameter, implementer_class)
+// connection must end with uvm_blocking_put_imp
+// for tlm connection between driver and monitor, the connection 
+// must be in connect_phase of agent
+// for tlm connection between scoreboard and monitor/driver, the connection
+// must be in connect_phase of env
+
 class producer extends uvm_component;
     `uvm_component_utils(producer)
 
