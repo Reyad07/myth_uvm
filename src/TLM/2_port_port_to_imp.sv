@@ -13,7 +13,7 @@ class subproducer extends uvm_component;
 
     virtual function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        sub_port = new("send",this); // create port(send)
+        sub_port = new("sub_port",this); // create port(sub_port)
     endfunction
 
     virtual task main_phase(uvm_phase phase);
@@ -40,7 +40,7 @@ class producer extends uvm_component;
     virtual function void build_phase(uvm_phase phase);
         super.build_phase(phase);
         s = subproducer::type_id::create("s", this);
-        port = new("send",this); // create port(send)
+        port = new("port",this); // create port(port)
     endfunction
 
     virtual function void connect_phase(uvm_phase phase);

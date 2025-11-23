@@ -18,6 +18,10 @@ class producer extends uvm_component;
 
     function new(string path = "producer", uvm_component parent = null);
         super.new(path, parent);
+    endfunction
+
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
         send = new("send", this);
     endfunction
 
@@ -40,6 +44,10 @@ class consumer extends uvm_component;
 
     function new(string path = "consumer", uvm_component parent = null);
         super.new(path, parent);
+    endfunction
+
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase (phase);
         recv = new("recv", this);   //  create export(recv)
         imp = new("imp", this);   // create implementation(imp)
     endfunction
