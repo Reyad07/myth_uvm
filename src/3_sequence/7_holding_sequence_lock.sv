@@ -1,15 +1,21 @@
 `include "uvm_macros.svh"
 import uvm_pkg::*;
 
-// possible arbitration methods:
-// SEQ_ARB_FIFO - default method (no priority)
-// SEQ_ARB_WEIGHTED - weight is use for priority but still uses some randomness. With this algorithm, the 
-//                    sequence_items to be sent to the driver are selected on a random basis but weighted with the
-//                    sequence_items from the highest priority sequence being sent first
-// SEQ_ARB_RANDOM       - strictly random (no priority)
-// SEQ_ARB_STRICT_FIFO  - support priority - FIFO will only come into play with same weight for multiple sequence
-// SEQ_ARB_STRICT_RANDOM - support priority
-// SEQ_ARB_USER - user defined
+// when we have multiple sequences with lock method, then the sequence that gets 
+// access first executes fully before the next sequence can start executing
+// but in case of one sequence with lock method, other sequences have to wait until
+// the locked sequence executes fully
+
+// this following example shows one sequence using lock method so when sequence1 is called
+// it locks the sequencer and sequence2 has to wait until sequence1 completes its execution
+// but in any case if the sequence2 gets access first, it can execute one transaction before
+// sequence1 gets access and locks the sequencer -> the access is given in line no 173, 174
+// so, if 174 is placed before 173, sequence2 will execute first transaction before sequence1 
+// locks the sequencer
+
+// it is possible to lock every sequence using lock method shown in line no 49-58
+// to lock sequnce2 as well, use the same method. In this way, whichever sequence gets access first
+// will lock the sequencer and execute fully before the next sequence can start executing
 
 class transaction extends uvm_sequence_item;
     
@@ -29,7 +35,7 @@ class transaction extends uvm_sequence_item;
 
 endclass
 
-///////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 
 class sequence1 extends uvm_sequence #(transaction);
     `uvm_object_utils(sequence1)
@@ -41,17 +47,21 @@ class sequence1 extends uvm_sequence #(transaction);
     transaction tr;
 
     virtual task body();
-        tr = transaction::type_id::create("tr");
-        `uvm_info("SEQUENCE1","Sequence 1 started", UVM_NONE)
-        start_item(tr);
-        assert(tr.randomize());
-        finish_item(tr);
-        `uvm_info("SEQUENCE1","Sequence 1 ended", UVM_NONE)
-    endtask
 
+        lock(m_sequencer);
+            repeat (3) begin
+                `uvm_info("SEQUENCE1","Sequence 1 started", UVM_NONE)
+                tr = transaction::type_id::create("tr");
+                start_item(tr);
+                assert(tr.randomize());
+                finish_item(tr);
+                `uvm_info("SEQUENCE1","Sequence 1 ended", UVM_NONE)
+            end
+        unlock(m_sequencer);
+    endtask
 endclass
 
-///////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 
 class sequence2 extends uvm_sequence #(transaction);
     `uvm_object_utils(sequence2)
@@ -63,12 +73,14 @@ class sequence2 extends uvm_sequence #(transaction);
     transaction tr;
 
     virtual task body();
-        tr = transaction::type_id::create("tr");
-        `uvm_info("SEQUENCE2","Sequence 2 started", UVM_NONE)
-        start_item(tr);
-        assert(tr.randomize());
-        finish_item(tr);
-        `uvm_info("SEQUENCE2","Sequence 2 ended", UVM_NONE)
+        repeat (3) begin
+            `uvm_info("SEQUENCE2","Sequence 2 started", UVM_NONE)
+            tr = transaction::type_id::create("tr");
+            start_item(tr);
+            assert(tr.randomize());
+            finish_item(tr);
+            `uvm_info("SEQUENCE2","Sequence 2 ended", UVM_NONE)
+        end
     endtask
 
 endclass
@@ -163,15 +175,9 @@ class test extends uvm_test;
 
     virtual task run_phase(uvm_phase phase);
         phase.raise_objection(this);
-        // arbitration methods usage example:
-        // e.agt.seqr.set_arbitration(UVM_SEQ_ARB_STRICT_FIFO);
-        // e.agt.seqr.set_arbitration(UVM_SEQ_ARB_STRICT_RANDOM);
-        // e.agt.seqr.set_arbitration(UVM_SEQ_ARB_RANDOM);
-        e.agt.seqr.set_arbitration(UVM_SEQ_ARB_WEIGHTED);
         fork
-            // s2 has lower priority than s1
-            repeat(3) s2.start(e.agt.seqr,null,100); // lower weight means lower priority
-            repeat(3) s1.start(e.agt.seqr, null,200); // more weight means higher priority
+            s1.start(e.agt.seqr,null,100);
+            s2.start(e.agt.seqr, null,200); 
         join 
         phase.drop_objection(this);
     endtask
